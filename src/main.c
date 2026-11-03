@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <errno.h>
 //user must free on success
 char* read_line(void){ 
     char *buf = NULL;
@@ -40,6 +43,29 @@ char **split_line(char *line){
     arr[num_of_tokens] = NULL;
     return arr;
 }
+int launch(char **args){
+    pid_t pid = fork();
+
+    //error
+    if(pid < 0){
+        perror("error forking");
+        return -1;
+    }
+    //child call exec
+    else if(pid == 0){
+        execvp(args[0] , args);
+        perror("error");
+        _exit(127);
+    }
+    //parent
+    int status;
+    do{
+        if(waitpid(pid , &status , WUNTRACED) == -1){
+            perror("error");
+            return -1;
+        }
+    }while(!WIFEXITED(status) && !WEXITSTATUS(status)) ;
+}
 int main(void){
     char *line = NULL;
     while(1){
@@ -56,14 +82,15 @@ int main(void){
         }
         else{
             char **tokens = split_line(line);
-            int count =0;
-            for(int i = 0 ; tokens[i] != NULL ; i++){
-                count ++;
-            }
-            printf("%d\n" ,count);
-            for(int i = 0 ; tokens[i] != NULL ; i++){
-                printf("[%d] %s\n",i,tokens[i]);
-            }
+            // int count =0;
+            // for(int i = 0 ; tokens[i] != NULL ; i++){
+            //     count ++;
+            // }
+            // printf("%d\n" ,count);
+            // for(int i = 0 ; tokens[i] != NULL ; i++){
+            //     printf("[%d] %s\n",i,tokens[i]);
+            // }
+            launch(tokens);
             free(tokens);
             free(line);
         }
